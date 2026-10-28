@@ -1,6 +1,6 @@
 # Fork notes
 
-This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid). Full upstream git history is retained so original authors remain credited. The original MIT license and copyright notice in [LICENSE.md](LICENSE.md) are unchanged.
+This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid). Full upstream git history is retained so original authors remain credited. The original MIT license and copyright notice in [LICENSE.md](LICENSE.md) are unchanged and continue to cover the upstream code. Fork modifications after `868b42b` are under [LICENSE-CORNERSTONE.txt](LICENSE-CORNERSTONE.txt).
 
 ## Fork point
 

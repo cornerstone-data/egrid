@@ -277,6 +277,15 @@ Questions about the official eGRID dataset should go to EPA through [this web fo
 
 To ask a question about or report an issue in this code, review the [CONTRIBUTING](CONTRIBUTING.md) policy and submit an issue under the "Issues" tab of [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid/issues). Provide a concise summary as the title of the issue and a clear description, including steps to reproduce the issue.
 
+## License
+
+This repository has two licensing layers:
+
+-   Code from USEPA/egrid at or before upstream commit `868b42b` is licensed under the MIT License in [LICENSE.md](LICENSE.md). The original copyright notice must be retained.
+-   Modifications and additions made in this fork after that commit are licensed under the [Cornerstone Data Pipeline Attribution License 1.0](LICENSE-CORNERSTONE.txt). See [ATTRIBUTION.md](ATTRIBUTION.md) for the attribution requirement on data produced with those modifications.
+
+Raw EPA and EIA input data and R package dependencies are not covered by either license.
+
 ## Disclaimer
 
 The United States Environmental Protection Agency (EPA) GitHub project code is provided on an "as is" basis and the user assumes responsibility for its use. EPA has relinquished control of the information and no longer has responsibility to protect the integrity , confidentiality, or availability of the information. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by EPA. The EPA seal and logo shall not be used in any manner to imply endorsement of any commercial product or activity by EPA or the United States Government.
