@@ -2,6 +2,10 @@
 
 This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid). Full upstream git history is retained so original authors remain credited. The original MIT license and copyright notice in [LICENSE.md](LICENSE.md) are unchanged.
 
+## Fork point
+
+The `main` branch of this repository reflects the code in the `development` branch of USEPA/egrid as of the fork, i.e. upstream commit `868b42b` ("Updating read of EPA API data.", 2026-04-23). The upstream `main` branch at that time (`08eddc7`, 2025-06-12) was older than that `development` head, so `development` was merged into `main` here. All commits after `868b42b` are specific to this fork.
+
 ## Relationship to upstream
 
 - Changes are not sent upstream as pull requests.

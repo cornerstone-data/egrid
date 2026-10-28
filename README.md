@@ -4,7 +4,7 @@ This repository includes all necessary scripts and documentation to create the [
 
 ## Origin
 
-This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), the code base EPA's Clean Air and Power Division (CAPD) uses to produce eGRID. It is maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid) and is **not** maintained, reviewed, or endorsed by EPA. The original authors' commit history is preserved, and the original MIT license and copyright notice are retained in [LICENSE.md](LICENSE.md). Changes made since the fork are recorded in [FORK.md](FORK.md).
+This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), the code base EPA's Clean Air and Power Division (CAPD) uses to produce eGRID. It is maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid) and is **not** maintained, reviewed, or endorsed by EPA. `main` reflects the code in USEPA/egrid's `development` branch as of the fork (upstream commit `868b42b`, 2026-04-23). The original authors' commit history is preserved, and the original MIT license and copyright notice are retained in [LICENSE.md](LICENSE.md). Changes made since the fork are recorded in [FORK.md](FORK.md).
 
 The official eGRID datasets are published by EPA at <https://www.epa.gov/egrid>. Output produced by this fork may differ from the official releases.
 
