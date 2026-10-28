@@ -148,7 +148,7 @@ create_contents_egrid_final <- function(year = params$eGRID_year) {
     glue::glue("Surrounding demographic data for eGRID{year} plants"))
   
   # table of contents production model note
-  production_link <- c("https://github.com/USEPA/egrid")
+  production_link <- c("https://github.com/cornerstone-data/egrid")
   names(production_link) <- c(glue::glue("eGRID R production model {params$version}."))
   class(production_link) <- "hyperlink"
 

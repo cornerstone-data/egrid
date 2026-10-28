@@ -2,6 +2,12 @@
 
 This repository includes all necessary scripts and documentation to create the [Emissions & Generation Resource Integrated Database (eGRID)](https://www.epa.gov/egrid).
 
+## Origin
+
+This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), the code base EPA's Clean Air and Power Division (CAPD) uses to produce eGRID. It is maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid) and is **not** maintained, reviewed, or endorsed by EPA. The original authors' commit history is preserved, and the original MIT license and copyright notice are retained in [LICENSE.md](LICENSE.md). Changes made since the fork are recorded in [FORK.md](FORK.md).
+
+The official eGRID datasets are published by EPA at <https://www.epa.gov/egrid>. Output produced by this fork may differ from the official releases.
+
 ## Background
 
 eGRID is a comprehensive source of data from [EPA's Clean Air and Power Division (CAPD)](https://epa.gov/power-sector) on the environmental 
@@ -96,10 +102,12 @@ The codebase contains two QA files as Quarto documents:
 
 ## Contributing to eGRID
 
-Please submit any questions about the eGRID dataset to [this web form](https://www.epa.gov/egrid/forms/contact-us-about-egrid).
+Questions about the official eGRID dataset should go to EPA through [this web form](https://www.epa.gov/egrid/forms/contact-us-about-egrid). EPA does not support this fork.
 
-If you would like to ask a question about or report an issue in the code, review the CONTRIBUTING policy and submit an issue under the "Issues" tab in the GitHub repository. Provide a concise summary as the title of the issue and a clear description, including steps to reproduce the issue.
+To ask a question about or report an issue in this code, review the [CONTRIBUTING](CONTRIBUTING.md) policy and submit an issue under the "Issues" tab of [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid/issues). Provide a concise summary as the title of the issue and a clear description, including steps to reproduce the issue.
 
 ## Disclaimer
 
 The United States Environmental Protection Agency (EPA) GitHub project code is provided on an "as is" basis and the user assumes responsibility for its use. EPA has relinquished control of the information and no longer has responsibility to protect the integrity , confidentiality, or availability of the information. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by EPA. The EPA seal and logo shall not be used in any manner to imply endorsement of any commercial product or activity by EPA or the United States Government.
+
+This fork is independently maintained and is not affiliated with or endorsed by EPA or the United States Government.

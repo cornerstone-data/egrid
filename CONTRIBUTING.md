@@ -1,10 +1,10 @@
 ## Welcome!
 
-We’re so glad you’re thinking about contributing to an EPA open source project! If you’re unsure about anything, just ask — or submit your issue or pull request anyway. The worst that can happen is we’ll politely ask you to change something. We appreciate all friendly contributions.
+We're glad you're thinking about contributing! This repository is an independently maintained fork of [USEPA/egrid](https://github.com/USEPA/egrid) and is not maintained or endorsed by EPA. If you're unsure about anything, just ask, or submit your issue or pull request anyway. We appreciate all friendly contributions.
 
-We encourage you to read this project’s CONTRIBUTING policy (you are here), its
-LICENSE, and its [README](https://github.com/USEPA/egrid/blob/development/README.md).
+We encourage you to read this project's CONTRIBUTING policy (you are here), its
+[LICENSE](LICENSE.md), and its [README](https://github.com/cornerstone-data/egrid/blob/main/README.md).
 
-All contributions to this project will be released under the MIT dedication. By submitting a pull request or issue, you are agreeing to comply with this waiver of copyright interest.
+All contributions to this project will be released under the MIT license. By submitting a pull request or issue, you are agreeing to comply with this license.
 
-If you have any questions or want to read more, check out the [EPA Open Source Project Repo](https://github.com/USEPA/open-source-projects) and [EPA's Interim Open Source Code Guidance](https://developer.epa.gov/guide/open-source-code/).
+Contributions and issues here are not forwarded to EPA. For questions about the official eGRID dataset, use [EPA's contact form](https://www.epa.gov/egrid/forms/contact-us-about-egrid).
