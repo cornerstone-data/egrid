@@ -238,8 +238,26 @@ plant_df <-
 
 ## Puerto Rico 860m -------------
 
+path_860m_pr <- glue::glue("data/1_production_model/raw_data/860/{params$eGRID_year}/eia_pr_860m.xlsx")
+
 pr_sheets <- c("Operating_PR",
                "Retired_PR")
+
+# EIA did not break Puerto Rico out into its own sheets until the 2018 vintage of
+# the December 860m, and the header row moved from row 2 to row 3 in the 2020
+# vintage. detecting both rather than assuming the current layout.
+pr_sheets_available <- intersect(pr_sheets, readxl::excel_sheets(path_860m_pr))
+
+find_pr_header_skip <- function(path, sheet) {
+  head_rows <- suppressMessages(readxl::read_excel(path, sheet = sheet, col_names = FALSE,
+                                                   n_max = 5, .name_repair = "minimal"))
+  header_row <- which(apply(head_rows, 1,
+                            function(r) any(trimws(as.character(r)) == "Entity ID", na.rm = TRUE)))[1]
+  if (is.na(header_row)) {
+    stop(glue::glue("Could not locate the header row in sheet '{sheet}' of {path}."), call. = FALSE)
+  }
+  header_row - 1
+}
 
 names_860_PR_op <- 
   c("Utility ID" = "Entity ID",
@@ -292,30 +310,49 @@ names_860_PR_ret <-
     "Status" = "Status")
 
 
-puerto_rico_dfs <- 
-  purrr::map(pr_sheets, 
-             ~ read_excel(glue::glue("data/1_production_model/raw_data/860/{params$eGRID_year}/eia_pr_860m.xlsx"),
+if (length(pr_sheets_available) == 0) {
+  warning(glue::glue(
+    "No Puerto Rico sheets ({glue::glue_collapse(pr_sheets, sep = ', ', last = ' or ')}) found in ",
+    "{path_860m_pr}. EIA did not report Puerto Rico separately in the 860m until the 2018 vintage, ",
+    "so eGRID {params$eGRID_year} is being built WITHOUT Puerto Rico."), call. = FALSE)
+}
+
+puerto_rico_dfs <-
+  purrr::map(pr_sheets_available,
+             ~ read_excel(path_860m_pr,
                           sheet = .x,
-                          skip = 2,
+                          skip = find_pr_header_skip(path_860m_pr, .x),
                           na = c(".", "X"),
                           guess_max = 4000)) %>%
-  setNames(., janitor::make_clean_names(pr_sheets))
+  setNames(., janitor::make_clean_names(pr_sheets_available))
 
 
 ### 860m modifications ------------
 
-puerto_rico_dfs_mod <- 
-  puerto_rico_dfs %>%
-  purrr::map_at("operating_pr", # modifying operating pr df
-                ~ .x %>% 
-                  mutate(Status = str_extract(Status, "(?<=\\().*?(?=\\))")) %>% # updating status variable to match other files (extracting abb. inside of parantheses).
-                  rename(any_of(names_860_PR_op))) %>% # renaming columns to match other forms based on lookup table
-  purrr::map_at("retired_pr", # modifying retired pr data
-                ~ .x %>% 
-                  filter("Retirement Year" == {params$eGRID_year}) %>% # filtering to only plants retired in eGRID year
-                  rename(any_of(names_860_PR_ret))) %>% # renaming columns to match other 860 files.
-  purrr::map(., ~ .x %>% 
-               rename_with(tolower) %>% 
+puerto_rico_dfs_mod <- puerto_rico_dfs
+
+if ("operating_pr" %in% names(puerto_rico_dfs_mod)) {
+  puerto_rico_dfs_mod <-
+    puerto_rico_dfs_mod %>%
+    purrr::map_at("operating_pr", # modifying operating pr df
+                  ~ .x %>%
+                    mutate(Status = str_extract(Status, "(?<=\\().*?(?=\\))")) %>% # updating status variable to match other files (extracting abb. inside of parantheses).
+                    rename(any_of(names_860_PR_op))) # renaming columns to match other forms based on lookup table
+}
+
+if ("retired_pr" %in% names(puerto_rico_dfs_mod)) {
+  puerto_rico_dfs_mod <-
+    puerto_rico_dfs_mod %>%
+    purrr::map_at("retired_pr", # modifying retired pr data
+                  ~ .x %>%
+                    filter("Retirement Year" == {params$eGRID_year}) %>% # filtering to only plants retired in eGRID year
+                    rename(any_of(names_860_PR_ret))) # renaming columns to match other 860 files.
+}
+
+puerto_rico_dfs_mod <-
+  puerto_rico_dfs_mod %>%
+  purrr::map(., ~ .x %>%
+               rename_with(tolower) %>%
                janitor::clean_names()) # converting column names in both files to snake_case and lower
 
 
