@@ -4,13 +4,13 @@ This repository includes all necessary scripts and documentation to create the [
 
 ## Origin
 
-This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), the code base EPA's Clean Air and Power Division (CAPD) uses to produce eGRID. It is maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid) and is **not** maintained, reviewed, or endorsed by EPA. `main` reflects the code in USEPA/egrid's `development` branch at upstream commit `868b42b`. The original authors' commit history is preserved, and the original MIT license and copyright notice are retained in [LICENSE.md](LICENSE.md). Changes made since the fork are recorded in [FORK.md](FORK.md).
+This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), the code base EPA's Clean Air and Power Division (CAPD) used to produce eGRID. It is maintained independently at [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid) and is **not** maintained, reviewed, or endorsed by USEPA. This fork started with USEPA/egrid's `development` branch at upstream commit `868b42b`. The original authors' commit history is preserved, and the original MIT license and copyright notice are retained in [LICENSE.md](LICENSE.md). Changes made since the fork are recorded in [FORK.md](FORK.md).
 
-The official eGRID datasets are published by EPA at <https://www.epa.gov/egrid>. Output produced by this fork may differ from the official releases.
+The USEPA eGRID datasets are published by EPA at <https://www.epa.gov/egrid>. Output produced by this fork may differ from the official releases.
 
 ## Background
 
-eGRID is a comprehensive source of data from [EPA's Clean Air and Power Division (CAPD)](https://epa.gov/power-sector) on the environmental characteristics of almost all electric power generated in the United States. eGRID is based on available plant-specific data for all U.S. electricity generating plants that provide power to the electric grid and report emissions and electricity data to the U.S. government. Data reported include, but are not limited to, net electric generation; resource mix (the share of generation by resource or fuel type); mass emissions of carbon dioxide (CO<sub>2</sub>), nitrogen oxides (NO<sub>x</sub>), sulfur dioxide (SO<sub>2</sub>), methane (CH<sub>4</sub>), and nitrous oxide (N<sub>2</sub>O); emission rates for CO<sub>2</sub>, NO<sub>x</sub>, SO<sub>2</sub>, CH<sub>4</sub>, and N<sub>2</sub>O; heat input; and nameplate capacity. eGRID reports this information on an annual basis (as well as by ozone season for heat input and NO<sub>x</sub>) at different levels of geographic aggregation.
+eGRID is a comprehensive source of data on the environmental characteristics of almost all electric power generated in the United States. eGRID is based on available plant-specific data for all U.S. electricity generating plants that provide power to the electric grid and report emissions and electricity data to the U.S. government. Data reported include, but are not limited to, net electric generation; resource mix (the share of generation by resource or fuel type); mass emissions of carbon dioxide (CO<sub>2</sub>), nitrogen oxides (NO<sub>x</sub>), sulfur dioxide (SO<sub>2</sub>), methane (CH<sub>4</sub>), and nitrous oxide (N<sub>2</sub>O); emission rates for CO<sub>2</sub>, NO<sub>x</sub>, SO<sub>2</sub>, CH<sub>4</sub>, and N<sub>2</sub>O; heat input; and nameplate capacity. eGRID reports this information on an annual basis (as well as by ozone season for heat input and NO<sub>x</sub>) at different levels of geographic aggregation.
 
 ### eGRID Repository Components
 The primary eGRID dataset is referred to in this repository as the eGRID production model. Additional supplementary datasets and tools utilize the eGRID production model to provide more information about certain aspects of the U.S. electric grid. The eGRID repository cumulatively consists of the following components:
@@ -45,8 +45,6 @@ The final eGRID production model dataset includes eight levels of data aggregati
 
 Further information on the eGRID methodology can be found in the [eGRID Technical Guide](https://www.epa.gov/egrid/egrid-technical-guide).
 
-The dataset that this code produces is publicly available [here](https://www.epa.gov/egrid/download-data).
-
 ![Figure 1: eGRID subregions.](data/1_production_model/static_tables/formatting/egrid_subregion_map.png)
 
 Figure 1: eGRID subregions.
@@ -69,19 +67,17 @@ The final dataset for each pollutant (PM<sub>2.5</sub>, NH<sub>3</sub>, and VOC)
 
 Further information on the eGRID PM<sub>2.5</sub>, NH<sub>3</sub>, and VOC methodology can be found in the [Particulate Matter Emissions for eGRID2021](https://www.epa.gov/system/files/documents/2024-06/egrid2021-draft-pm-memo.pdf) methodology documentation.
 
-The dataset that this code produces is publicly available [here](https://www.epa.gov/egrid/egrid-pm25).
-
 ### Web updates 
 
-There are eGRID websites that use underlying data from the production model. The [eGRID Data Explorer](https://www.epa.gov/egrid/data-explorer) file inputs and [Frequently Asked Questions Global Warming Potential table](https://www.epa.gov/egrid/frequent-questions-about-egrid#What%20are%20GWPs%20and%20which%20GWPs%20does%20eGRID%20use) are calculated as post-processing steps in this codebase. 
+There are eGRID websites that use underlying data from the production model. The eGRID Data Explorer file inputs and Frequently Asked Questions Global Warming Potential table are calculated as post-processing steps in this codebase. 
 
 ### Power profiler
 
-The National Renewable Energy Lab (NREL) produces a dataset of utilities servicing zip codes which is used in conjunction with the eGRID production model data to assign utilities and eGRID subregions to zip codes. This data is then used in the [eGRID Power Profiler Tool](https://www.epa.gov/egrid/power-profiler#/) where users can explore their electricity fuel mix and emission rates based on their zip code and utility. 
+The National Renewable Energy Lab (NREL) produces a dataset of utilities servicing zip codes which is used in conjunction with the eGRID production model data to assign utilities and eGRID subregions to zip codes. This data is then used in the eGRID Power Profiler Tool where users can explore their electricity fuel mix and emission rates based on their zip code and utility. 
 
 ## Architecture
 
-Starting in 2024, EPA released the methodology to develop eGRID as an RStudio project. Recently, there has been increased interest from users in understanding the methods used to create the eGRID data. To increase transparency in the eGRID production process, EPA has made the R scripts available for users to view and use. EPA used the RStudio project beginning in 2024 to produce eGRID2023.
+Starting in 2024, USEPA released the methodology to develop eGRID as an RStudio project. To increase transparency in the eGRID production process, USEPA made the R scripts available for users to view and use. USEPA used the RStudio project beginning in 2024 to produce eGRID2023.
 
 ### Production model
 
@@ -273,8 +269,6 @@ The codebase contains two QA files as Quarto documents:
 
 ## Contributing to eGRID
 
-Questions about the official eGRID dataset should go to EPA through [this web form](https://www.epa.gov/egrid/forms/contact-us-about-egrid). EPA does not support this fork.
-
 To ask a question about or report an issue in this code, review the [CONTRIBUTING](CONTRIBUTING.md) policy and submit an issue under the "Issues" tab of [cornerstone-data/egrid](https://github.com/cornerstone-data/egrid/issues). Provide a concise summary as the title of the issue and a clear description, including steps to reproduce the issue.
 
 ## License
@@ -286,8 +280,3 @@ This repository has two licensing layers:
 
 Raw EPA and EIA input data and R package dependencies are not covered by either license.
 
-## Disclaimer
-
-The United States Environmental Protection Agency (EPA) GitHub project code is provided on an "as is" basis and the user assumes responsibility for its use. EPA has relinquished control of the information and no longer has responsibility to protect the integrity , confidentiality, or availability of the information. Any reference to specific commercial products, processes, or services by service mark, trademark, manufacturer, or otherwise, does not constitute or imply their endorsement, recommendation or favoring by EPA. The EPA seal and logo shall not be used in any manner to imply endorsement of any commercial product or activity by EPA or the United States Government.
-
-This fork is independently maintained and is not affiliated with or endorsed by EPA or the United States Government.
