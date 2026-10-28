@@ -36,7 +36,10 @@ download_historical_egrid <- function(year) {
             "2020" = "https://www.epa.gov/system/files/documents/2022-09/eGRID2020_Data_v2.xlsx",
             "2021" = "https://www.epa.gov/system/files/documents/2023-01/eGRID2021_data.xlsx",
             "2022" = "https://www.epa.gov/system/files/documents/2024-01/egrid2022_data.xlsx",
-            "2023" = "https://www.epa.gov/system/files/documents/2025-06/egrid2023_data_rev2.xlsx")
+            "2023" = "https://www.epa.gov/system/files/documents/2025-06/egrid2023_data_rev2.xlsx",
+            # EPA did not publish eGRID2024; use Cornerstone eGRID 2024 (https://doi.org/10.5281/zenodo.18968658),
+            # which is only published in metric units. The plant and CHP flag fields are unit-independent.
+            "2024" = "https://zenodo.org/records/18968658/files/egrid2024_data_metric.xlsx")
   
   # save URLs as a callable variable
   assign("egrid_urls", urls, envir = .GlobalEnv)
@@ -45,7 +48,9 @@ download_historical_egrid <- function(year) {
   egrid_dir <- "data/1_production_model/static_tables/historical_egrid/"
   
   # set name of previous year's file
-  file_path <- glue::glue("{egrid_dir}egrid{year}_data.xlsx")
+  # metric-only releases keep their file name so they are not mistaken for US-unit data
+  file_name <- if (as.character(year) == "2024") "egrid2024_data_metric.xlsx" else glue::glue("egrid{year}_data.xlsx")
+  file_path <- glue::glue("{egrid_dir}{file_name}")
   
   # check if historical data file does not exist
   if(!file.exists(file_path)) {

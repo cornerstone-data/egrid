@@ -72,6 +72,7 @@ eia_860_combined <- eia_860$combined %>%
 xwalk_fuel_codes <- # xwalk for specific changes made to certain generator fuel types
   read_csv("data/1_production_model/static_tables/og_oth_units_to_change_fuel_type.csv", 
            col_types = "cccccccc") %>% 
+  filter(year == params$eGRID_year) %>% # only keep updates for eGRID_year, otherwise plants with different codes across years duplicate generators in the join
   select(plant_id, fuel_code) %>% distinct()
 
 xwalk_eia_epa <- # xwalk for updating certain plants to EPA plant names and ids
@@ -80,9 +81,10 @@ xwalk_eia_epa <- # xwalk for updating certain plants to EPA plant names and ids
 
 epa_plants_to_delete <- 
   read_csv("data/1_production_model/static_tables/epa_plants_to_delete.csv", 
-           col_types = cols_only(`ORIS Code` = "c")) %>% 
+           col_types = cols_only(Year = "i", `ORIS Code` = "c")) %>%
   janitor::clean_names() %>% 
-  rename("plant_id" = oris_code)
+  filter(year <= params$eGRID_year) %>% # match unit file: deletions apply from their year onward
+  select("plant_id" = oris_code)
 
 manual_corrections <- # manual corrections needed for generator file
   read_xlsx("data/1_production_model/static_tables/manual_corrections.xlsx", 
