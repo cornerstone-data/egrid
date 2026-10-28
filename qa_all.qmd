@@ -15,8 +15,8 @@ editor: source
 project: 
   execute_dir: project
 params:
-  year: 2024
-  year_abbrev: 24
+  year: 2025
+  year_abbrev: 25
   temporal_res: "annual" # annual or monthly
 ---
 
@@ -1130,7 +1130,8 @@ shp_download <- function(shp_type) {
   return (shp)
 }
 
-if(length(list.files("data/shapefiles") == 1)) {
+if(!all(file.exists(c("data/1_production_model/shapefiles/eGRID2022_Subregions.shp",
+                      "data/1_production_model/shapefiles/eGRID2022_Multiple_Subregions.shp")))) {
   sbrgn_shp <- shp_download("Subregions")
   multi_sbrgn_shp <- shp_download("Multiple_Subregions")
 } else {
