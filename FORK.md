@@ -4,7 +4,7 @@ This repository is a fork of [USEPA/egrid](https://github.com/USEPA/egrid), main
 
 ## Fork point
 
-The `main` branch of this repository reflects the code in the `development` branch of USEPA/egrid as of the fork, i.e. upstream commit `868b42b` ("Updating read of EPA API data.", 2026-04-23). The upstream `main` branch at that time (`08eddc7`, 2025-06-12) was older than that `development` head, so `development` was merged into `main` here. All commits after `868b42b` are specific to this fork.
+The `main` branch of this repository reflects the code in the `development` branch of USEPA/egrid at upstream commit `868b42b` ("Updating read of EPA API data."). The upstream `main` branch at that time (`08eddc7`, 2025-06-12) was older than that `development` head, so `development` was merged into `main` here. All commits after `868b42b` are specific to this fork.
 
 ## Relationship to upstream
 
