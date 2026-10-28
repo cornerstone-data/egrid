@@ -98,6 +98,7 @@ xwalk_county_names <- read_csv("data/1_production_model/static_tables/xwalk_fips
 # OG/OTH fuel types to update
 oth_og_recode <- 
   read_csv("data/1_production_model/static_tables/og_oth_units_to_change_fuel_type.csv") %>% 
+  filter(year == params$eGRID_year) %>% # only keep updates for eGRID_year
   select(plant_id, "fuel_type" = primary_fuel_type, fuel_code) %>% 
   mutate(plant_id = as.character(plant_id))
 
@@ -142,6 +143,7 @@ chp_file_year <- glue::glue("data/1_production_model/static_tables/chp_database_
 # default to 2024 CHP database if eGRID year CHP database does not exist
 if (!file.exists(chp_file_year)){
   chp_file <- glue::glue("data/1_production_model/static_tables/chp_database_2024.csv")
+  warning(glue::glue("No CHP database for {params$eGRID_year}. Using {chp_file} instead."))
 } else { 
   chp_file <- chp_file_year}
 

@@ -802,7 +802,7 @@ all_units <- # binding all units together, and adding a source column to track r
 
 all_units_2 <- 
   all_units %>% 
-  rows_delete(eia_plants_to_delete, by = "plant_id") %>% 
+  rows_delete(eia_plants_to_delete, by = "plant_id", unmatched = "ignore") %>% # crosswalk plants may have retired
   mutate(across(.cols = c("heat_input", "nox_mass", "so2_mass", "co2_mass"),  
                 .fns = ~ if_else(reporting_frequency == "OS" & month == 4 & .x == 0, 
                                  NA_real_, .x)),

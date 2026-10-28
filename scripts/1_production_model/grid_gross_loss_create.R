@@ -64,8 +64,16 @@ source("scripts/functions/function_download_eia_ggl.R")
 ggl_file <- glue::glue("data/1_production_model/clean_data/eia_ggl/ggl_{params$eGRID_year}.xlsx") # data file name
 try(download_eia_ggl(params$eGRID_year)) # try function to download
 
+# EIA's State Electricity Profiles can lag the other EIA releases. If eGRID year data are not
+# available yet, fall back to the previous year's GGL data so the rest of the run can proceed.
 if (!file.exists(ggl_file)) {
-  stop(glue::glue("Necessary data from EIA is not available for {params$eGRID_year}. Please check if the latest data is downloaded or {params$eGRID_year} data may not be currently available."))
+  ggl_file_prev <- glue::glue("data/1_production_model/clean_data/eia_ggl/ggl_{as.numeric(params$eGRID_year) - 1}.xlsx")
+  if (file.exists(ggl_file_prev)) {
+    warning(glue::glue("EIA GGL data not available for {params$eGRID_year}. Using {ggl_file_prev} instead. Re-run once EIA publishes {params$eGRID_year} State Electricity Profiles."))
+    ggl_file <- ggl_file_prev
+  } else {
+    stop(glue::glue("Necessary data from EIA is not available for {params$eGRID_year}. Please check if the latest data is downloaded or {params$eGRID_year} data may not be currently available."))
+  }
 }
 
 
