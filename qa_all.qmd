@@ -3258,7 +3258,7 @@ knitr::kable(check_plant_sbrgn_blanks %>%
 
 ## Subregion fallbacks
 
-Plants not matched by the subregion crosswalks, filled from the previous eGRID year or spatially from the eGRID subregion shapefile. Spatially assigned plants in a multiple-subregion area should be confirmed and added to `xwalk_oris_subregion.csv`.
+Plants not matched by the subregion crosswalks, filled following the eGRID subregion assignment method: the plant's previous eGRID year subregion, then a unique historical BA + transmission owner match, then a unique historical BA + transmission owner + utility match. Remaining plants are assigned geographically from the eGRID subregion shapefile as a last resort. `suggested_subregion_ba_utility` is a unique BA + utility match, shown as a suggestion only. Geographically assigned plants in a multiple-subregion area, or that differ from the suggestion, should be confirmed and added to `xwalk_oris_subregion.csv`.
 
 ```{r}
 #| label: plant-subrgn-fallbacks
@@ -3268,16 +3268,20 @@ sbrgn_fallback_file <- glue::glue("data/1_production_model/static_tables/qa/subr
 if (file.exists(sbrgn_fallback_file)) {
   check_plant_sbrgn_fallbacks <- read_csv(sbrgn_fallback_file, col_types = cols(.default = "c"))
 } else {
-  check_plant_sbrgn_fallbacks <- tibble(plant_id = character(), multi_subregion_area = character())
+  check_plant_sbrgn_fallbacks <- tibble(plant_id = character(), subregion_source = character(), multi_subregion_area = character(), suggestion_differs = character())
 }
 
-check_plant_sbrgn_multi <-
-  check_plant_sbrgn_fallbacks %>%
-  filter(multi_subregion_area %in% "TRUE")
+check_plant_sbrgn_geographic <- 
+  check_plant_sbrgn_fallbacks %>% 
+  filter(grepl("geographic", subregion_source))
 
-ifelse(nrow(check_plant_sbrgn_multi) == 0,
-       glue::glue("Status: PASS - {nrow(check_plant_sbrgn_fallbacks)} plants filled by subregion fallbacks; none are in a multiple-subregion area."),
-       glue::glue("Status: NEEDS CHECKED - {nrow(check_plant_sbrgn_multi)} spatially assigned plants are in a multiple-subregion area."))
+check_plant_sbrgn_review <- 
+  check_plant_sbrgn_geographic %>% 
+  filter(multi_subregion_area %in% "TRUE" | suggestion_differs %in% "TRUE")
+
+ifelse(nrow(check_plant_sbrgn_review) == 0, 
+       glue::glue("Status: PASS - {nrow(check_plant_sbrgn_fallbacks)} plants filled by subregion fallbacks ({nrow(check_plant_sbrgn_geographic)} geographically); none need review."), 
+       glue::glue("Status: NEEDS CHECKED - {nrow(check_plant_sbrgn_review)} geographically assigned plants are in a multiple-subregion area or differ from the BA + utility suggestion."))
 
 knitr::kable(check_plant_sbrgn_fallbacks) %>%
   kable_styling() %>%

@@ -147,6 +147,26 @@ prev_egrid_subregion <-
     filter(!is.na(egrid_subregion)) %>%
     distinct(plant_id, .keep_all = TRUE)
 
+# previous year EIA-860 BA, transmission owner, and utility IDs with previous eGRID year subregions,
+# used as historical matches for plants not matched by the crosswalks
+prev_eia_860_file <- glue::glue("data/1_production_model/clean_data/eia/{prev_egrid_year}/eia_860_clean.RDS")
+
+if (file.exists(prev_eia_860_file)) {
+  prev_egrid_subregion_ids <-
+    read_rds(prev_eia_860_file)$plant %>%
+    transmute(plant_id = as.character(plant_id),
+              ba_code = balancing_authority_code,
+              system_owner_id = as.character(transmission_or_distribution_system_owner_id),
+              utility_id = as.character(utility_id)) %>%
+    mutate(system_owner_id = if_else(is.na(system_owner_id), "-9999", system_owner_id)) %>%
+    inner_join(prev_egrid_subregion, by = "plant_id") %>%
+    select(-plant_id)
+} else {
+  warning(glue::glue("No clean EIA-860 data for {prev_egrid_year}. Historical subregion matches will use crosswalks and {params$eGRID_year} plants only."))
+  prev_egrid_subregion_ids <- tibble(ba_code = character(), system_owner_id = character(),
+                                     utility_id = character(), egrid_subregion = character())
+}
+
 # EPA CHP database
 ### Note: check for updates or changes each data year ###
 
@@ -510,30 +530,72 @@ plant_file_5 <-
 
 ### NERC and eGRID subregion assignments ----------------------------------------
 
-# fill subregions still blank after the crosswalks, first from the previous eGRID year,
-# then spatially from the plant's EIA-860 coordinates on the eGRID subregion shapefile.
-# plants filled by each fallback are printed and saved for review in qa_all.qmd
+# fill subregions still blank after the crosswalks, following the eGRID subregion assignment method:
+#   1. the plant's subregion in the previous eGRID year
+#   2. a unique historical BA and transmission owner match
+#   3. a unique historical BA, transmission owner, and utility match
+# historical matches come from the subregion crosswalks, previous year plants, and plants already assigned
+# this year. NERC region is not part of the key, since EIA-860 NERC regions can change between years.
+# plants still blank are assigned geographically from the eGRID subregion shapefile as a last resort.
+# a unique BA and utility match is recorded as a suggestion only.
+# plants filled by each step are printed and saved for review in qa_all.qmd
 subregion_fallbacks <- function(plant_data) {
 
   blank_plants <-
     plant_data %>%
+    ungroup() %>%
     filter(is.na(egrid_subregion)) %>%
     distinct(plant_id, .keep_all = TRUE) %>%
-    select(plant_id, plant_name, plant_state, ba_code, lat, lon) %>%
+    select(plant_id, plant_name, plant_state, ba_code, system_owner_id, utility_id, lat, lon) %>%
     mutate(lat = as.character(lat),
            lon = as.character(lon))
 
-  # previous eGRID year subregion
+  # historical BA, transmission owner, and utility matches
+  historical_matches <-
+    bind_rows(plant_data %>% ungroup() %>% filter(!is.na(egrid_subregion)) %>%
+                select(ba_code, system_owner_id, utility_id, egrid_subregion),
+              prev_egrid_subregion_ids,
+              xwalk_subregion_transmission %>% ungroup() %>% select(ba_code, system_owner_id, egrid_subregion),
+              xwalk_subregion_utility %>% ungroup() %>% select(ba_code, system_owner_id, utility_id, egrid_subregion)) %>%
+    filter(!is.na(ba_code) & !is.na(egrid_subregion)) %>%
+    distinct()
+
+  unique_match <- function(keys) {
+    historical_matches %>%
+      filter(if_all(all_of(keys), ~ !is.na(.x))) %>%
+      group_by(across(all_of(keys))) %>%
+      filter(n_distinct(egrid_subregion) == 1) %>%
+      summarize(egrid_subregion = first(egrid_subregion), .groups = "drop")
+  }
+
+  # 1. previous eGRID year subregion
   filled_prev_year <-
     blank_plants %>%
     inner_join(prev_egrid_subregion, by = "plant_id") %>%
-    mutate(subregion_source = paste0("eGRID", prev_egrid_year),
-           multi_subregion_area = NA)
+    mutate(subregion_source = paste0("eGRID", prev_egrid_year))
 
-  # spatial assignment for remaining plants with coordinates
+  # 2. BA and transmission owner (plants that reported a transmission owner)
+  filled_ba_to <-
+    blank_plants %>%
+    filter(!plant_id %in% filled_prev_year$plant_id & system_owner_id != "-9999") %>%
+    inner_join(unique_match(c("ba_code", "system_owner_id")) %>% filter(system_owner_id != "-9999"),
+               by = c("ba_code", "system_owner_id")) %>%
+    mutate(subregion_source = "BA + transmission owner (historical)")
+
+  # 3. BA, transmission owner, and utility
+  filled_ba_to_utility <-
+    blank_plants %>%
+    filter(!plant_id %in% c(filled_prev_year$plant_id, filled_ba_to$plant_id)) %>%
+    inner_join(unique_match(c("ba_code", "system_owner_id", "utility_id")),
+               by = c("ba_code", "system_owner_id", "utility_id")) %>%
+    mutate(subregion_source = "BA + transmission owner + utility (historical)")
+
+  filled <- bind_rows(filled_prev_year, filled_ba_to, filled_ba_to_utility)
+
+  # geographic assignment as a last resort for remaining plants with coordinates
   blank_points <-
     blank_plants %>%
-    filter(!plant_id %in% filled_prev_year$plant_id) %>%
+    filter(!plant_id %in% filled$plant_id) %>%
     mutate(lat = as.numeric(lat),
            lon = as.numeric(lon)) %>%
     filter(!is.na(lat) & !is.na(lon))
@@ -546,7 +608,7 @@ subregion_fallbacks <- function(plant_data) {
     blank_points_sf <- sf::st_as_sf(blank_points, coords = c("lon", "lat"), crs = "EPSG:4326", remove = FALSE)
     multi_ids <- suppressMessages(sf::st_filter(blank_points_sf, multi_sbrgn_shp))$plant_id
 
-    filled_spatial <-
+    filled_geographic <-
       suppressMessages(sf::st_join(blank_points_sf, sbrgn_shp %>% select(subregion))) %>%
       sf::st_drop_geometry() %>%
       filter(!is.na(subregion)) %>%
@@ -554,28 +616,36 @@ subregion_fallbacks <- function(plant_data) {
       filter(n() == 1) %>% # skip points on a boundary that match more than one subregion
       ungroup() %>%
       mutate(egrid_subregion = subregion,
-             subregion_source = "eGRID2022 subregion shapefile",
+             subregion_source = "eGRID2022 subregion shapefile (geographic)",
              multi_subregion_area = plant_id %in% multi_ids,
              lat = as.character(lat),
              lon = as.character(lon)) %>%
       select(-subregion)
 
     suppressMessages(sf::sf_use_s2(s2_setting))
-  } else {
-    filled_spatial <- filled_prev_year[0, ]
+
+    filled <- bind_rows(filled, filled_geographic)
   }
 
+  # BA and utility match, as a suggestion for review only
   filled <-
-    bind_rows(filled_prev_year, filled_spatial)
+    filled %>%
+    left_join(unique_match(c("ba_code", "utility_id")) %>% rename(suggested_subregion_ba_utility = egrid_subregion),
+              by = c("ba_code", "utility_id")) %>%
+    mutate(suggestion_differs = !is.na(suggested_subregion_ba_utility) & suggested_subregion_ba_utility != egrid_subregion)
 
   if (nrow(filled) > 0) {
-    print(glue::glue("{nrow(filled_prev_year)} blank subregions filled from eGRID{prev_egrid_year}; ",
-                     "{nrow(filled_spatial)} filled from the subregion shapefile."))
-    print(filled %>% select(plant_id, plant_name, plant_state, ba_code, egrid_subregion, subregion_source, multi_subregion_area),
+    print(glue::glue("{nrow(blank_plants)} plants not matched by the subregion crosswalks. Filled: ",
+                     "{nrow(filled_prev_year)} from eGRID{prev_egrid_year}, ",
+                     "{nrow(filled_ba_to)} by BA + transmission owner, ",
+                     "{nrow(filled_ba_to_utility)} by BA + transmission owner + utility, ",
+                     "{sum(grepl('geographic', filled$subregion_source))} geographically."))
+    print(filled %>% select(plant_id, plant_name, plant_state, ba_code, egrid_subregion, subregion_source, suggested_subregion_ba_utility),
           n = Inf)
-    if (any(filled$multi_subregion_area, na.rm = TRUE)) {
-      warning(glue::glue("Spatially assigned plants in a multiple-subregion area need manual review: ",
-                         "{paste(filled$plant_id[filled$multi_subregion_area %in% TRUE], collapse = ', ')}"))
+    geographic_review <- filled %>% filter(multi_subregion_area %in% TRUE | (grepl("geographic", subregion_source) & suggestion_differs))
+    if (nrow(geographic_review) > 0) {
+      warning(glue::glue("Geographically assigned plants in a multiple-subregion area or differing from the BA + utility suggestion need manual review: ",
+                         "{paste(geographic_review$plant_id, collapse = ', ')}"))
     }
   }
 
