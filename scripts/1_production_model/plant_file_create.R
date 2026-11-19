@@ -33,6 +33,7 @@ source("scripts/functions/function_update_source.R")
 source("scripts/functions/function_check_file_exists.R")
 source("scripts/functions/function_save_output_data.R")
 source("scripts/functions/function_download_historical_egrid.R")
+source("scripts/functions/function_load_egrid_subregion_shapefile.R")
 
 # Define flag whether or not to include biomass_units_to_add table
 # we do this because we need to run a version of the unit and plant file without this table to identify which units need to be added 
@@ -125,15 +126,26 @@ prev_egrid_year <- as.numeric(params$eGRID_year) - 1
 
 prev_egrid_file <- download_historical_egrid(prev_egrid_year)
 
-plant_chp_prev_year <- # plant file of previous year
+prev_egrid_plant <- # plant file of previous year
     read_xlsx(glue::glue(prev_egrid_file),
               sheet = glue::glue("PLNT{prev_egrid_year %% 1000}"),
-              skip = 1) %>% 
-    janitor::clean_names() %>% 
-    mutate(orispl = as.character(orispl)) %>%
-    select(plant_id = orispl, 
-           prev_egrid_chp = chpflag) %>% 
+              skip = 1) %>%
+    janitor::clean_names() %>%
+    mutate(orispl = as.character(orispl))
+
+plant_chp_prev_year <-
+    prev_egrid_plant %>%
+    select(plant_id = orispl,
+           prev_egrid_chp = chpflag) %>%
     filter(prev_egrid_chp == "Yes")
+
+# previous eGRID year subregions, used to fill plants not matched by the crosswalks
+prev_egrid_subregion <-
+    prev_egrid_plant %>%
+    select(plant_id = orispl,
+           egrid_subregion = subrgn) %>%
+    filter(!is.na(egrid_subregion)) %>%
+    distinct(plant_id, .keep_all = TRUE)
 
 # EPA CHP database
 ### Note: check for updates or changes each data year ###
@@ -485,6 +497,84 @@ plant_file_5 <-
 
 ### NERC and eGRID subregion assignments ----------------------------------------
 
+# fill subregions still blank after the crosswalks, first from the previous eGRID year,
+# then spatially from the plant's EIA-860 coordinates on the eGRID subregion shapefile.
+# plants filled by each fallback are printed and saved for review in qa_all.qmd
+subregion_fallbacks <- function(plant_data) {
+
+  blank_plants <-
+    plant_data %>%
+    filter(is.na(egrid_subregion)) %>%
+    distinct(plant_id, .keep_all = TRUE) %>%
+    select(plant_id, plant_name, plant_state, ba_code, lat, lon) %>%
+    mutate(lat = as.character(lat),
+           lon = as.character(lon))
+
+  # previous eGRID year subregion
+  filled_prev_year <-
+    blank_plants %>%
+    inner_join(prev_egrid_subregion, by = "plant_id") %>%
+    mutate(subregion_source = glue::glue("eGRID{prev_egrid_year}"),
+           multi_subregion_area = NA)
+
+  # spatial assignment for remaining plants with coordinates
+  blank_points <-
+    blank_plants %>%
+    filter(!plant_id %in% filled_prev_year$plant_id) %>%
+    mutate(lat = as.numeric(lat),
+           lon = as.numeric(lon)) %>%
+    filter(!is.na(lat) & !is.na(lon))
+
+  if (nrow(blank_points) > 0) {
+    sbrgn_shp <- load_egrid_subregion_shapefile("Subregions")
+    multi_sbrgn_shp <- load_egrid_subregion_shapefile("Multiple_Subregions")
+    s2_setting <- suppressMessages(sf::sf_use_s2(FALSE))
+
+    blank_points_sf <- sf::st_as_sf(blank_points, coords = c("lon", "lat"), crs = "EPSG:4326", remove = FALSE)
+    multi_ids <- suppressMessages(sf::st_filter(blank_points_sf, multi_sbrgn_shp))$plant_id
+
+    filled_spatial <-
+      suppressMessages(sf::st_join(blank_points_sf, sbrgn_shp %>% select(subregion))) %>%
+      sf::st_drop_geometry() %>%
+      filter(!is.na(subregion)) %>%
+      group_by(plant_id) %>%
+      filter(n() == 1) %>% # skip points on a boundary that match more than one subregion
+      ungroup() %>%
+      mutate(egrid_subregion = subregion,
+             subregion_source = "eGRID2022 subregion shapefile",
+             multi_subregion_area = plant_id %in% multi_ids,
+             lat = as.character(lat),
+             lon = as.character(lon)) %>%
+      select(-subregion)
+
+    suppressMessages(sf::sf_use_s2(s2_setting))
+  } else {
+    filled_spatial <- filled_prev_year[0, ]
+  }
+
+  filled <-
+    bind_rows(filled_prev_year, filled_spatial)
+
+  if (nrow(filled) > 0) {
+    print(glue::glue("{nrow(filled_prev_year)} blank subregions filled from eGRID{prev_egrid_year}; ",
+                     "{nrow(filled_spatial)} filled from the subregion shapefile."))
+    print(filled %>% select(plant_id, plant_name, plant_state, ba_code, egrid_subregion, subregion_source, multi_subregion_area),
+          n = Inf)
+    if (any(filled$multi_subregion_area, na.rm = TRUE)) {
+      warning(glue::glue("Spatially assigned plants in a multiple-subregion area need manual review: ",
+                         "{paste(filled$plant_id[filled$multi_subregion_area %in% TRUE], collapse = ', ')}"))
+    }
+  }
+
+  if (!dir.exists("data/1_production_model/static_tables/qa")) {
+    dir.create("data/1_production_model/static_tables/qa", recursive = TRUE)
+  }
+  write_csv(filled, glue::glue("data/1_production_model/static_tables/qa/subregion_fallbacks_{params$eGRID_year}.csv"))
+
+  plant_data %>%
+    rows_patch(filled %>% select(plant_id, egrid_subregion), by = "plant_id", unmatched = "ignore")
+}
+
 # update plant file with NERC and eGRID subregion updates
 plant_file_6 <- 
   plant_file_5 %>% 
@@ -503,8 +593,9 @@ plant_file_6 <-
   rows_patch(xwalk_subregion_utility, by =  c("nerc", "ba_code", "system_owner_id", "utility_id"), unmatched = "ignore") %>% 
   rows_patch(xwalk_subregion_transmission, by = c("nerc", "ba_code", "system_owner_id"), unmatched = "ignore") %>% 
   rows_update(xwalk_oris_subregion, by = c("plant_state", "plant_id"), unmatched = "ignore") %>% 
-  rows_patch(xwalk_nerc_assessment, by = c("plant_id"), unmatched = "ignore") %>% 
-  left_join(egrid_subregions, by = c("egrid_subregion")) %>% 
+  rows_patch(xwalk_nerc_assessment, by = c("plant_id"), unmatched = "ignore") %>%
+  subregion_fallbacks() %>%
+  left_join(egrid_subregions, by = c("egrid_subregion")) %>%
   mutate(ba_code = case_when(is.na(ba_code) & plant_state == "AK" ~ "NA - AK", # update NA BAs to state specific NAs
                               is.na(ba_code) & plant_state == "HI" ~ "NA - HI", 
                               is.na(ba_code) & plant_state == "PR" ~ "NA - PR",
