@@ -458,6 +458,14 @@ plant_file_4 <-
   mutate(county = if_else(!is.na(new_county), new_county, county)) %>% 
   select(-new_county)
 
+# record which step first fills a column, in a "{col}_source" column
+tag_source <- function(data, col, source) {
+  src_col <- glue::glue("{col}_source")
+  data %>% 
+    mutate("{src_col}" := if_else(is.na(.data[[src_col]]) & !is.na(.data[[col]]) & .data[[col]] != "NA", 
+                                  source, .data[[src_col]]))
+}
+
 ### Balancing authority assignments --------------
 
 # identify utility IDs that have NA BA codes in the plant file 
@@ -482,16 +490,21 @@ eia_861_ba <-
 # update plant_file with the lookup
 plant_file_5 <- 
   plant_file_4 %>% 
+  mutate(ba_code_source = if_else(!is.na(ba_code) & ba_code != "NA", "EIA-860", NA_character_)) %>% 
   rows_patch(eia_861_utility %>% select(-count), by = c("plant_state", "utility_id"), unmatched = "ignore") %>%  # update plants with NA BA codes
+  tag_source("ba_code", "EIA-861 utility") %>% 
   rows_patch(eia_861_utility %>% select(-count) %>% rename("system_owner_id" = utility_id), # match some utility IDs by system owner IDs
              by = c("plant_state", "system_owner_id"), unmatched = "ignore") %>% 
+  tag_source("ba_code", "EIA-861 system owner") %>% 
   rows_patch(eia_861_ba, by = c("plant_state", "ba_name"), unmatched = "ignore") %>% # update BA codes that are NA from EIA-861 BA
+  tag_source("ba_code", "EIA-861 BA name") %>% 
   rows_patch(eia_861_ba, by = c("plant_state", "ba_code"), unmatched = "ignore") %>% # update BA names that are NA from EIA-861 BA
   mutate(ba_code = case_when(ba_code == "NA" ~ NA_character_, # if BA code is "NA", set as an NA character
                              ba_name == "No BA" ~ NA_character_, 
                              ba_code == "PS" ~ "PSCO", 
                              ba_name == "Hawaiian Electric Co Inc" ~ "HECO",
                              TRUE ~ ba_code)) %>% 
+  mutate(ba_code_source = if_else(is.na(ba_code), NA_character_, ba_code_source)) %>% 
   rows_update(ba_codes, by = c("ba_code"), unmatched = "ignore") # update ba_name by ba_code
 
 
@@ -514,7 +527,7 @@ subregion_fallbacks <- function(plant_data) {
   filled_prev_year <-
     blank_plants %>%
     inner_join(prev_egrid_subregion, by = "plant_id") %>%
-    mutate(subregion_source = glue::glue("eGRID{prev_egrid_year}"),
+    mutate(subregion_source = paste0("eGRID", prev_egrid_year),
            multi_subregion_area = NA)
 
   # spatial assignment for remaining plants with coordinates
@@ -572,7 +585,7 @@ subregion_fallbacks <- function(plant_data) {
   write_csv(filled, glue::glue("data/1_production_model/static_tables/qa/subregion_fallbacks_{params$eGRID_year}.csv"))
 
   plant_data %>%
-    rows_patch(filled %>% select(plant_id, egrid_subregion), by = "plant_id", unmatched = "ignore")
+    rows_patch(filled %>% select(plant_id, egrid_subregion, egrid_subregion_source = subregion_source), by = "plant_id", unmatched = "ignore")
 }
 
 # update plant file with NERC and eGRID subregion updates
@@ -589,11 +602,19 @@ plant_file_6 <-
                                      nerc == "PR" ~ "PRMS",
                                     TRUE ~ NA_character_),
          system_owner_id = if_else(is.na(system_owner_id), "-9999", system_owner_id)) %>% 
+  mutate(egrid_subregion_source = if_else(!is.na(egrid_subregion), "NERC region", NA_character_)) %>% 
   rows_patch(xwalk_ba, by = c("ba_code"), unmatched = "ignore") %>% 
+  tag_source("egrid_subregion", "xwalk_balancing_authority.csv") %>% 
   rows_patch(xwalk_subregion_utility, by =  c("nerc", "ba_code", "system_owner_id", "utility_id"), unmatched = "ignore") %>% 
+  tag_source("egrid_subregion", "xwalk_subregion_utility.csv") %>% 
   rows_patch(xwalk_subregion_transmission, by = c("nerc", "ba_code", "system_owner_id"), unmatched = "ignore") %>% 
+  tag_source("egrid_subregion", "xwalk_subregion_transmission.csv") %>% 
   rows_update(xwalk_oris_subregion, by = c("plant_state", "plant_id"), unmatched = "ignore") %>% 
+  mutate(egrid_subregion_source = if_else(paste(plant_state, plant_id) %in% 
+                                            paste(xwalk_oris_subregion$plant_state, xwalk_oris_subregion$plant_id), 
+                                          "xwalk_oris_subregion.csv", egrid_subregion_source)) %>% 
   rows_patch(xwalk_nerc_assessment, by = c("plant_id"), unmatched = "ignore") %>%
+  tag_source("egrid_subregion", "nerc_assessment_areas") %>% 
   subregion_fallbacks() %>%
   left_join(egrid_subregions, by = c("egrid_subregion")) %>%
   mutate(ba_code = case_when(is.na(ba_code) & plant_state == "AK" ~ "NA - AK", # update NA BAs to state specific NAs
@@ -601,6 +622,7 @@ plant_file_6 <-
                               is.na(ba_code) & plant_state == "PR" ~ "NA - PR",
                               is.na(ba_code) & !(plant_state %in% c("AK", "HI", "PR")) ~ "NA",
                               TRUE ~ ba_code),
+         ba_code_source = coalesce(ba_code_source, "No BA"),
         ba_name = case_when(plant_state == "AK" & # assign Alaska BAs with no BA to NA - AK
                             (is.na(ba_name) | ba_name %in% c("No BA", "No balancing authority")) ~ 
                             "No balancing authority - AK",
@@ -1710,4 +1732,24 @@ plants_formatted <-
 
 save_output_data(plants_formatted, "data/1_production_model/outputs", glue::glue("plant_file_{params$temporal_res}.RDS"))
 
+# Export BA and subregion reference -------------
 
+# plant-level BA and eGRID subregion with the step that assigned each, 
+# for comparison with other plant-level datasets such as Open Grid Emissions (matched on EIA plant ID)
+plant_ba_subregion_reference <- 
+  plants_formatted %>% 
+  ungroup() %>% 
+  distinct(plant_id, .keep_all = TRUE) %>% 
+  select(plant_id, plant_name, plant_state, lat, lon, primary_fuel_category, nameplate_capacity, 
+         utility_id, system_owner_id, nerc, ba_code, ba_name, isorto, egrid_subregion, egrid_subregion_name) %>% 
+  left_join(plant_file_6 %>% 
+              ungroup() %>% 
+              distinct(plant_id, ba_code_source, egrid_subregion_source) %>% 
+              distinct(plant_id, .keep_all = TRUE), 
+            by = "plant_id") %>% 
+  relocate(ba_code_source, .after = ba_name) %>% 
+  relocate(egrid_subregion_source, .after = egrid_subregion_name) %>% 
+  arrange(plant_state, plant_id)
+
+save_output_data(plant_ba_subregion_reference, "data/1_production_model/outputs", 
+                 glue::glue("plant_ba_subregion_reference_{params$temporal_res}.csv"), file_type = "CSV")
