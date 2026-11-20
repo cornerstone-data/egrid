@@ -1113,40 +1113,11 @@ Map plants for each region and fix accordingly if needed.
 #| label: load-subregion-shapefile 
 #| results: false
 
-options(timeout = 180)
+# load subregion shapefiles, downloading from EPA website if needed
+source("scripts/functions/function_load_egrid_subregion_shapefile.R")
 
-# download subregion shapefiles from EPA website
-shp_download <- function(shp_type) {
-  temp_file <- tempfile()
-  download.file(glue::glue("https://www.epa.gov/system/files/other-files/2024-05/egrid2022_{tolower(shp_type)}_shapefile.zip"), temp_file)
-  shp_file <- unzip(temp_file, exdir="data/1_production_model/shapefiles")
-  unlink(temp_file)
-  
-  shp <- 
-    sf::st_read(glue::glue("data/1_production_model/shapefiles/eGRID2022_{shp_type}.shp")) %>%
-    drop_na() %>% 
-    rename("subregion" = "ZipSubregi") %>% 
-    sf::st_transform(crs = "EPSG:4326")
-  return (shp)
-}
-
-if(!all(file.exists(c("data/1_production_model/shapefiles/eGRID2022_Subregions.shp",
-                      "data/1_production_model/shapefiles/eGRID2022_Multiple_Subregions.shp")))) {
-  sbrgn_shp <- shp_download("Subregions")
-  multi_sbrgn_shp <- shp_download("Multiple_Subregions")
-} else {
-  sbrgn_shp <- 
-    sf::st_read(glue::glue("data/1_production_model/shapefiles/eGRID2022_Subregions.shp")) %>%
-    drop_na() %>% 
-    rename("subregion" = "ZipSubregi") %>% 
-    sf::st_transform(crs = "EPSG:4326")
-  
-  multi_sbrgn_shp <- 
-    sf::st_read(glue::glue("data/1_production_model/shapefiles/eGRID2022_Multiple_Subregions.shp")) %>%
-    drop_na() %>% 
-    rename("subregion" = "ZipSubregi") %>% 
-    sf::st_transform(crs = "EPSG:4326")
-}
+sbrgn_shp <- load_egrid_subregion_shapefile("Subregions")
+multi_sbrgn_shp <- load_egrid_subregion_shapefile("Multiple_Subregions")
 
 sf::sf_use_s2(FALSE)
 
@@ -3277,6 +3248,43 @@ ifelse(nrow(check_plant_sbrgn_blanks) == 0, "Status: PASS - No plants have blank
 knitr::kable(check_plant_sbrgn_blanks %>% 
                select(plant_id, plant_name, egrid_subregion)) %>% 
   kable_styling() %>% 
+  scroll_box(
+    height = "300px",   # Vertical scroll height
+    box_css = "border: 1px solid #ddd; padding: 5px; ",
+    fixed_thead = TRUE  # Keep header fixed while scrolling
+  )
+
+```
+
+## Subregion fallbacks
+
+Plants not matched by the subregion crosswalks, filled following the eGRID subregion assignment method: the plant's previous eGRID year subregion, then a unique historical BA + transmission owner match, then a unique historical BA + transmission owner + utility match. Remaining plants are assigned geographically from the eGRID subregion shapefile as a last resort. `suggested_subregion_ba_utility` is a unique BA + utility match, shown as a suggestion only. Geographically assigned plants in a multiple-subregion area, or that differ from the suggestion, should be confirmed and added to `xwalk_oris_subregion.csv`.
+
+```{r}
+#| label: plant-subrgn-fallbacks
+
+sbrgn_fallback_file <- glue::glue("data/1_production_model/static_tables/qa/subregion_fallbacks_{params$year}.csv")
+
+if (file.exists(sbrgn_fallback_file)) {
+  check_plant_sbrgn_fallbacks <- read_csv(sbrgn_fallback_file, col_types = cols(.default = "c"))
+} else {
+  check_plant_sbrgn_fallbacks <- tibble(plant_id = character(), subregion_source = character(), multi_subregion_area = character(), suggestion_differs = character())
+}
+
+check_plant_sbrgn_geographic <- 
+  check_plant_sbrgn_fallbacks %>% 
+  filter(grepl("geographic", subregion_source))
+
+check_plant_sbrgn_review <- 
+  check_plant_sbrgn_geographic %>% 
+  filter(multi_subregion_area %in% "TRUE" | suggestion_differs %in% "TRUE")
+
+ifelse(nrow(check_plant_sbrgn_review) == 0, 
+       glue::glue("Status: PASS - {nrow(check_plant_sbrgn_fallbacks)} plants filled by subregion fallbacks ({nrow(check_plant_sbrgn_geographic)} geographically); none need review."), 
+       glue::glue("Status: NEEDS CHECKED - {nrow(check_plant_sbrgn_review)} geographically assigned plants are in a multiple-subregion area or differ from the BA + utility suggestion."))
+
+knitr::kable(check_plant_sbrgn_fallbacks) %>%
+  kable_styling() %>%
   scroll_box(
     height = "300px",   # Vertical scroll height
     box_css = "border: 1px solid #ddd; padding: 5px; ",
