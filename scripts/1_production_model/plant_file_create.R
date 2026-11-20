@@ -539,6 +539,9 @@ plant_file_5 <-
 # plants still blank are assigned geographically from the eGRID subregion shapefile as a last resort.
 # a unique BA and utility match is recorded as a suggestion only.
 # plants filled by each step are printed and saved for review in qa_all.qmd
+# reference: eGRID Technical Guide with Year 2023 Data, section 3.4.2, pp. 23-24
+# (https://www.epa.gov/system/files/documents/2025-01/egrid2023_technical_guide.pdf): after the five steps,
+# operational plants keep their historical assignment, and new plants are assigned manually by physical location
 subregion_fallbacks <- function(plant_data) {
 
   blank_plants <-
